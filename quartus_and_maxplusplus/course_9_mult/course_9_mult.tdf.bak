@@ -1,0 +1,190 @@
+TITLE "course_9_mult.tdf";
+
+INCLUDE "lpm_mult.inc";
+INCLUDE "lpm_add_sub.inc";
+INCLUDE "lpm_counter.inc";
+
+PARAMETERS (lenght_reg = 5);
+
+CONSTANT word_lenght = 25;
+CONSTANT float_lenght = 19;
+CONSTANT int_lenght = word_lenght - float_lenght;
+
+FUNCTION my_reg (din[lenght_reg..1], set, reset, clk, enable)
+    WITH (lenght_reg)
+	RETURNS (q[lenght_reg..1]);
+
+
+CONSTANT b1 = 00001677;
+CONSTANT b2 = 00000000;
+CONSTANT b3 = 33551079;
+CONSTANT b4 = 00000000;
+CONSTANT b5 = 00001677;
+
+CONSTANT a2 = 01982465;
+CONSTANT a3 = 30697957;
+CONSTANT a4 = 01858151;
+CONSTANT a5 = 33093669;
+
+
+SUBDESIGN course_9_mult
+(
+	CLK							: INPUT;
+	data[word_lenght..1]		: INPUT;
+	out[word_lenght ..1]		: OUTPUT;
+
+	s_reg[5..1]					: OUTPUT;
+
+	inv_CLK_Count[6..1]	: OUTPUT;
+)
+
+VARIABLE
+
+	mult_b1, mult_b2, mult_b3, mult_b4, mult_b5,
+	mult_a2, mult_a3, mult_a4, mult_a5 : lpm_mult WITH
+		(
+			LPM_WIDTHA = word_lenght,
+			LPM_WIDTHB = word_lenght,
+			LPM_WIDTHP = word_lenght * 2,
+			LPM_WIDTHS = word_lenght * 2,
+			INPUT_B_IS_CONSTANT = "YES",
+            LPM_REPRESENTATION = "SIGNED"
+		);
+	
+	add_1, add_2, add_3, add_4, add_5, add_6, add_7, add_8 : lpm_add_sub WITH
+		(
+			LPM_WIDTH = word_lenght,
+			LPM_REPRESENTATION = "SIGNED",
+			LPM_DIRECTION = "add"
+		);
+
+	invClkCounter : lpm_counter WITH
+			(
+				LPM_WIDTH = 6,
+				LPM_DIRECTION = "UP",
+				LPM_MODULUS = 22
+			);
+
+  reg_1_reg_out, reg_2, reg_3, reg_4, reg_5 : my_reg WITH (lenght_reg = word_lenght);
+
+
+BEGIN
+
+	-- Управление логикой регистров
+
+	CASE inv_clk_count[] IS
+			WHEN 3, 4 => s_reg[1] = VCC;
+			WHEN OTHERS  => s_reg[1] = GND;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 7, 8 => s_reg[2] = VCC;
+			WHEN OTHERS  => s_reg[2] = GND;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 11, 12 => s_reg[3] = VCC;
+			WHEN OTHERS  => s_reg[3] = GND;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 15, 16 => s_reg[4] = VCC;
+			WHEN OTHERS  => s_reg[4] = GND;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 19, 20 => s_reg[5] = VCC;
+			WHEN OTHERS  => s_reg[5] = GND;
+	END CASE;
+
+	-- Раздаем регистрам импульсы вклюяения\выключения
+
+	reg_1_reg_out.enable = s_reg[1];
+	reg_2.enable = s_reg[2];
+	reg_3.enable = s_reg[3];
+	reg_4.enable = s_reg[4];
+	reg_5.enable = s_reg[5];
+
+	-- Раздаем тактовые импульсы регистрам
+
+	(reg_1_reg_out, reg_2, reg_3, reg_4, reg_5).clk = clk;
+
+	-- Раздаем тактовые импульсы счетчикам
+
+	invClkCounter.clock = !CLK;
+
+	-- Забираем счет с счетчиков
+
+	inv_CLK_Count[] = invClkCounter.q[];
+
+
+-- умножители с кэфом b
+	
+	mult_b1.dataa[] = data[];
+	mult_b1.datab[] = b1;
+
+	mult_b2.dataa[] = data[];
+	mult_b2.datab[] = b2;
+
+	mult_b3.dataa[] = data[];
+	mult_b3.datab[] = b3;
+
+	mult_b4.dataa[] = data[];
+	mult_b4.datab[] = b4;
+
+	mult_b5.dataa[] = data[];
+	mult_b5.datab[] = b5;
+
+-- умножители с кэфем a
+
+	mult_a2.dataa[] = out[];
+	mult_a2.datab[] = a2;
+
+	mult_a3.dataa[] = out[];
+	mult_a3.datab[] = a3;
+
+	mult_a4.dataa[] = out[];
+	mult_a4.datab[] = a4;
+
+	mult_a5.dataa[] = out[];
+	mult_a5.datab[] = a5;
+
+
+-- сумматоры
+
+	add_8.dataa[] = mult_a5.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_8.datab[] = mult_b5.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+
+	add_7.dataa[] = mult_b4.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_7.datab[] = reg_5.q[];
+
+	add_6.dataa[] = mult_a4.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_6.datab[] = add_7.result[];
+
+	add_5.dataa[] = mult_b3.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_5.datab[] = reg_4.q[];
+
+	add_4.dataa[] = mult_a3.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_4.datab[] = add_5.result[];
+
+	add_3.dataa[] = mult_b2.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_3.datab[] = reg_3.q[];
+
+	add_2.dataa[] = mult_a2.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_2.datab[] = add_3.result[];
+
+	add_1.dataa[] = mult_b1.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_1.datab[] = reg_2.q[];
+
+-- регистры
+
+	reg_5.Din[] = add_8.result[];
+	reg_4.Din[] = add_6.result[];
+	reg_3.Din[] = add_4.result[];
+	reg_2.Din[] = add_2.result[];	
+
+	reg_1_reg_out.Din[] = add_1.result[];
+
+	out[] = reg_1_reg_out.q[];
+
+END;

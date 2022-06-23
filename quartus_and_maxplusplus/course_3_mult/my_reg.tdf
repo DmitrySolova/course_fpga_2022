@@ -1,0 +1,27 @@
+PARAMETERS (lenght_reg = 5);
+
+SUBDESIGN my_reg
+(
+	Din[lenght_reg..1], Set, Reset : INPUT = GND;
+	CLK: INPUT;
+	Enable : INPUT = VCC;
+	Q[lenght_reg..1] : OUTPUT;
+)
+
+VARIABLE
+	FF[lenght_reg..1] : DFFE; -- D - ענטדדונ
+
+
+BEGIN
+	FF[].clk = CLK; 
+	FF[].ena = Enable;
+
+	CASE (Set, Reset) IS
+		WHEN B"00" => FF[].d = Din[];  
+		WHEN B"01" => FF[].d = GND;     
+		WHEN B"10" => FF[].d = VCC;     
+		WHEN B"11" => FF[].d = FF[].q;  
+	END CASE;
+
+	Q[] = FF[].q;
+END;

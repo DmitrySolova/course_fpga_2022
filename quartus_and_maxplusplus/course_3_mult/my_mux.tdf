@@ -1,0 +1,17 @@
+PARAMETERS (WIDTH = 8);
+
+SUBDESIGN my_mux
+(
+	A[WIDTH..1], B[WIDTH..1], C[WIDTH..1], D[WIDTH..1], E[WIDTH..1], ADR[5..1] : INPUT;
+	OUT[WIDTH..1]	: OUTPUT;						
+)
+
+BEGIN
+	CASE ADR[] IS
+		WHEN 1 => OUT[] = A[];
+		WHEN 2 => OUT[] = B[];
+		WHEN 3 => OUT[] = C[];
+		WHEN 4 => OUT[] = D[];
+		WHEN 5 => OUT[] = E[];
+	END CASE;
+END;

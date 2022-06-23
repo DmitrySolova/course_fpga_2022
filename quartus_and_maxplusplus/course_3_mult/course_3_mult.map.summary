@@ -1,0 +1,14 @@
+Analysis & Synthesis Status : Successful - Mon Jun 20 17:19:20 2022
+Quartus II Version : 9.0 Build 132 02/25/2009 SJ Full Version
+Revision Name : course_3_mult
+Top-level Entity Name : course_3_mult
+Family : Cyclone III
+Total logic elements : 392
+    Total combinational functions : 320
+    Dedicated logic registers : 126
+Total registers : 126
+Total pins : 61
+Total virtual pins : 0
+Total memory bits : 0
+Embedded Multiplier 9-bit elements : 21
+Total PLLs : 0

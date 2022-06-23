@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<LOG_ROOT>
+	<PROJECT NAME="course_3_mult">
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_mult:mult_b1" CBX_FILE_NAME="mult_mbp.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_add_sub:add_1" CBX_FILE_NAME="add_sub_dve.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_add_sub:add_3" CBX_FILE_NAME="add_sub_dve.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_counter:invClkCounter" CBX_FILE_NAME="cntr_j3j.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_mult:mult_b" CBX_FILE_NAME="mult_mbp.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_mux:b_mux" CBX_FILE_NAME="mux_src.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_mux:reg_mux" CBX_FILE_NAME="mux_src.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_add_sub:add_2" CBX_FILE_NAME="add_sub_dve.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_mult:mult_a" CBX_FILE_NAME="mult_mbp.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|course_3_mult|lpm_mux:a_mux" CBX_FILE_NAME="mux_src.tdf"/>
+	</PROJECT>
+</LOG_ROOT>

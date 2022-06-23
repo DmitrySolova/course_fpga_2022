@@ -1,0 +1,224 @@
+TITLE "course_3_mult.tdf";
+
+INCLUDE "lpm_mult.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "lpm_add_sub.inc";
+INCLUDE "lpm_counter.inc";
+
+CONSTANT word_lenght = 24;
+CONSTANT float_lenght = 18;
+CONSTANT int_lenght = word_lenght - float_lenght;
+
+FUNCTION my_reg (din[lenght_reg..1], set, reset, clk, enable)
+    WITH (lenght_reg)
+	RETURNS (q[lenght_reg..1]);
+
+
+CONSTANT b1 = 00000838;
+CONSTANT b2 = 00000000;
+CONSTANT b3 = 16775539;
+CONSTANT b4 = 00000000;
+CONSTANT b5 = 00000838;
+
+CONSTANT a2 = 00991233;
+CONSTANT a3 = 15348978;
+CONSTANT a4 = 00929075;
+CONSTANT a5 = 16546835;
+
+
+SUBDESIGN course_3_mult
+(
+	CLK							: INPUT;
+	data[word_lenght..1]		: INPUT;
+	out[word_lenght ..1]		: OUTPUT;
+
+	s_reg[5..0]					: OUTPUT;
+	
+	inv_CLK_Count[6..1]	: OUTPUT;
+)
+
+VARIABLE
+
+	mult_b1, mult_b, mult_a : lpm_mult WITH
+		(
+			LPM_WIDTHA = word_lenght,
+			LPM_WIDTHB = word_lenght,
+			LPM_WIDTHP = word_lenght * 2,
+			LPM_WIDTHS = word_lenght * 2,
+			INPUT_B_IS_CONSTANT = "YES",
+            LPM_REPRESENTATION = "SIGNED"
+		);
+	
+	add_1, add_2, add_3 : lpm_add_sub WITH
+		(
+			LPM_WIDTH = word_lenght,
+			LPM_REPRESENTATION = "SIGNED",
+			LPM_DIRECTION = "add"
+		);
+
+	invClkCounter : lpm_counter WITH
+			(
+				LPM_WIDTH = 6,
+				LPM_DIRECTION = "UP",
+				LPM_MODULUS = 20
+			);
+			
+
+	b_mux, a_mux : lpm_mux WITH
+			(
+				LPM_WIDTH = word_lenght,
+				LPM_SIZE = 6,
+				LPM_WIDTHS = 6
+			);
+
+	reg_mux : lpm_mux WITH
+			(
+				LPM_WIDTH = word_lenght,
+				LPM_SIZE = 6,
+				LPM_WIDTHS = 6
+			);
+
+  reg_1_reg_out, reg_2, reg_3, reg_4, reg_5 : my_reg WITH (lenght_reg = word_lenght);
+	reg_0 : my_reg WITH (lenght_reg = 1);
+
+
+BEGIN
+
+	s_reg[0] = GND;
+
+	-- Раздаем регистрам импульсы вклюяения\выключения
+
+	reg_0.enable = s_reg[0];
+	reg_1_reg_out.enable = s_reg[1];
+	reg_2.enable = s_reg[2];
+	reg_3.enable = s_reg[3];
+	reg_4.enable = s_reg[4];
+	reg_5.enable = s_reg[5];
+
+	-- Раздаем тактовые импульсы регистрам
+
+	(reg_0, reg_1_reg_out, reg_2, reg_3, reg_4, reg_5).clk = clk;
+
+	-- Раздаем тактовые импульсы счетчикам
+
+	invClkCounter.clock = !CLK;
+
+	-- Забираем счет с счетчиков
+
+	inv_CLK_Count[] = invClkCounter.q[];
+
+-- ==== mult
+
+	mult_b1.dataa[] = data[];
+	mult_b1.datab[] = b1;
+
+	mult_b.dataa[] = data[];
+	mult_b.datab[] = b_mux.result[];
+
+	mult_a.dataa[] = out[];
+	mult_a.datab[] = a_mux.result[];	
+
+-- ==== add
+
+	add_1.dataa[] = mult_b1.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_1.datab[] = reg_mux.result[];
+
+	add_2.dataa[] = mult_b.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_2.datab[] = reg_mux.result[];
+
+	add_3.dataa[] = mult_a.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_3.datab[] = add_2.result[];
+
+-- ==== reg
+
+	reg_1_reg_out.Din[] = add_1.result[];
+
+	out[] = reg_1_reg_out.q[];
+
+	reg_0.Din[] = GND;
+	reg_2.Din[] = add_3.result[];	
+	reg_3.Din[] = add_3.result[];
+	reg_4.Din[] = add_3.result[];
+	reg_5.Din[] = add_3.result[];
+
+
+-- ==== mux
+
+	reg_mux.data[0][] = reg_0.q[];
+	reg_mux.data[2][] = reg_2.q[];
+	reg_mux.data[3][] = reg_3.q[];
+	reg_mux.data[4][] = reg_4.q[];
+	reg_mux.data[5][] = reg_5.q[];
+
+	b_mux.data[2][] = b2;
+	b_mux.data[3][] = b3;
+	b_mux.data[4][] = b4;
+	b_mux.data[5][] = b5;
+
+	a_mux.data[2][] = a2;
+	a_mux.data[3][] = a3;
+	a_mux.data[4][] = a4;
+	a_mux.data[5][] = a5;
+	
+-- ==== step 1
+
+	CASE inv_clk_count[] IS
+			WHEN 0, 1, 2, 3 => reg_mux.sel[] = 2;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 2, 3 => s_reg[1] = VCC;
+			WHEN OTHERS  => s_reg[1] = GND;
+	END CASE;
+	
+	CASE inv_clk_count[] IS
+			WHEN 4, 5, 6, 7 => reg_mux.sel[] = 3;
+			WHEN 4, 5, 6, 7 => a_mux.sel[] = 2;
+			WHEN 4, 5, 6, 7 => b_mux.sel[] = 2;
+	END CASE;
+	
+	CASE inv_clk_count[] IS
+			WHEN 6, 7 => s_reg[2] = VCC;
+			WHEN OTHERS  => s_reg[2] = GND;
+	END CASE;
+	
+-- ==== step 2
+
+	CASE inv_clk_count[] IS
+			WHEN 8, 9, 10, 11 => reg_mux.sel[] = 4;
+			WHEN 8, 9, 10, 11 => a_mux.sel[] = 3;
+			WHEN 8, 9, 10, 11 => b_mux.sel[] = 3;
+	END CASE;
+	
+	CASE inv_clk_count[] IS
+			WHEN 10, 11 => s_reg[3] = VCC;
+			WHEN OTHERS  => s_reg[3] = GND;
+	END CASE;
+
+-- ==== step 3
+	
+	CASE inv_clk_count[] IS
+			WHEN 12, 13, 14, 15 => reg_mux.sel[] = 5;
+			WHEN 12, 13, 14, 15 => a_mux.sel[] = 4;
+			WHEN 12, 13, 14, 15 => b_mux.sel[] = 4;
+	END CASE;
+	
+	CASE inv_clk_count[] IS
+			WHEN 14, 15 => s_reg[4] = VCC;
+			WHEN OTHERS  => s_reg[4] = GND;
+	END CASE;
+	
+-- ==== step 4
+
+	CASE inv_clk_count[] IS
+			WHEN 16, 17, 18, 19 => reg_mux.sel[] = 0;
+			WHEN 16, 17, 18, 19 => a_mux.sel[] = 5;
+			WHEN 16, 17, 18, 19 => b_mux.sel[] = 5;
+	END CASE;
+	
+	CASE inv_clk_count[] IS
+			WHEN 18, 19 => s_reg[5] = VCC;
+			WHEN OTHERS  => s_reg[5] = GND;
+	END CASE;
+	
+END;

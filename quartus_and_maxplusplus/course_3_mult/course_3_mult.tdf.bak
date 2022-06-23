@@ -1,0 +1,268 @@
+TITLE "course_3_mult.tdf";
+
+INCLUDE "lpm_mult.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "lpm_add_sub.inc";
+INCLUDE "lpm_counter.inc";
+
+PARAMETERS (lenght_reg = 5);
+
+CONSTANT word_lenght = 23;
+CONSTANT float_lenght = 18;
+CONSTANT int_lenght = word_lenght - float_lenght;
+
+CONSTANT zero = 0;
+
+FUNCTION my_reg (din[lenght_reg..1], set, reset, clk, enable)
+    WITH (lenght_reg)
+	RETURNS (q[lenght_reg..1]);
+	
+FUNCTION my_mux(A[WIDTH..1], B[WIDTH..1], C[WIDTH..1], D[WIDTH..1], E[WIDTH..1], ADR[5..1])
+	WITH (WIDTH)
+	RETURNS (OUT[WIDTH..1]);
+
+CONSTANT b1 = 0000838;
+CONSTANT b2 = 0000000;
+CONSTANT b3 = 8386931;
+CONSTANT b4 = 0000000;
+CONSTANT b5 = 0000838;
+
+-- кэфы должны быть -a, так как у нас только суммирование
+
+CONSTANT a2 = 0991233;
+CONSTANT a3 = 6960370;
+CONSTANT a4 = 0929075;
+CONSTANT a5 = 8158227;
+
+
+SUBDESIGN course_3_mult
+(
+	CLK							: INPUT;
+	data[word_lenght..1]		: INPUT;
+	out[word_lenght ..1]		: OUTPUT;
+
+	s_reg[5..1]					: OUTPUT;
+
+	inv_CLK_Count[6..1]	: OUTPUT;
+)
+
+VARIABLE
+
+	mult_b1, mult_b, mult_a : lpm_mult WITH
+		(
+			LPM_WIDTHA = word_lenght,
+			LPM_WIDTHB = word_lenght,
+			LPM_WIDTHP = word_lenght * 2,
+			LPM_WIDTHS = word_lenght * 2,
+			INPUT_B_IS_CONSTANT = "YES",
+            LPM_REPRESENTATION = "SIGNED"
+		);
+	
+	add_1, add_2, add_3 : lpm_add_sub WITH
+		(
+			LPM_WIDTH = word_lenght,
+			LPM_REPRESENTATION = "SIGNED",
+			LPM_DIRECTION = "add"
+		);
+
+	invClkCounter : lpm_counter WITH
+			(
+				LPM_WIDTH = 6,
+				LPM_DIRECTION = "UP",
+				LPM_MODULUS = 22
+			);
+
+--	b_mux, a_mux : lpm_mux WITH
+--			(
+--				LPM_WIDTH = word_lenght,
+--				LPM_SIZE = 6,
+--				LPM_WIDTHS = 3
+--			);
+
+--	reg_mux : lpm_mux WITH
+--			(
+--				LPM_WIDTH = word_lenght,
+--				LPM_SIZE = 6,
+--				LPM_WIDTHS = 3
+--			);
+
+	a_mux, b_mux, reg_mux : my_mux WITH (WIDTH = word_lenght);
+
+
+  reg_1_reg_out, reg_2, reg_3, reg_4, reg_5 : my_reg WITH (lenght_reg = word_lenght);
+	reg_0 : my_reg WITH (lenght_reg = 1);
+
+BEGIN
+
+	-- Управление логикой открыл-закрыл регистров
+
+
+	-- Раздаем регистрам импульсы вклюяения\выключения
+
+	reg_0.enable = GND;
+	reg_1_reg_out.enable = s_reg[1];
+	reg_2.enable = s_reg[2];
+	reg_3.enable = s_reg[3];
+	reg_4.enable = s_reg[4];
+	reg_5.enable = s_reg[5];
+
+	-- Раздаем тактовые импульсы регистрам
+
+	(reg_0, reg_1_reg_out, reg_2, reg_3, reg_4, reg_5).clk = clk;
+	
+	-- Раздаем тактовые импульсы счетчикам
+
+	invClkCounter.clock = !CLK;
+
+	-- Забираем счет с счетчиков
+
+	inv_CLK_Count[] = invClkCounter.q[];
+
+-- ==== mult
+
+	mult_b1.dataa[] = data[];
+	mult_b1.datab[] = b1;
+
+	mult_b.dataa[] = data[];
+	mult_b.datab[] = b_mux.OUT[];
+
+	mult_a.dataa[] = out[];
+	mult_a.datab[] = a_mux.OUT[];	
+
+-- ==== add
+
+	add_1.dataa[] = mult_b1.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_1.datab[] = reg_mux.OUT[];
+
+	add_2.dataa[] = mult_b.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_2.datab[] = reg_mux.OUT[];
+
+	add_3.dataa[] = mult_a.result[(word_lenght * 2) - int_lenght - 1 .. float_lenght];
+	add_3.datab[] = add_2.result[];	
+	
+-- ==== reg
+
+	reg_1_reg_out.Din[] = add_1.result[];
+
+	out[] = reg_1_reg_out.q[];
+
+	reg_0.Din[] = GND;
+	reg_2.Din[] = add_3.result[];	
+	reg_3.Din[] = add_3.result[];
+	reg_4.Din[] = add_3.result[];
+	reg_5.Din[] = add_3.result[];
+
+
+-- === mux and demux
+
+	reg_mux.A[] = reg_0.q[];
+	reg_mux.B[] = reg_2.q[];
+	reg_mux.C[] = reg_3.q[];
+	reg_mux.D[] = reg_4.q[];
+	reg_mux.E[] = reg_5.q[];
+
+	a_mux.A[] = 0;
+	a_mux.B[] = b2;
+	a_mux.C[] = b3;
+	a_mux.D[] = b4;
+	a_mux.E[] = b5;
+
+	b_mux.A[] = 0;
+	b_mux.B[] = a2;
+	b_mux.C[] = a3;
+	b_mux.D[] = a4;
+	b_mux.E[] = a5;
+
+--	FOR GENERATE
+
+--	FOR i IN 1 TO 4 GENERATE
+	
+-- for 1
+
+	CASE inv_clk_count[] IS
+			WHEN 1 => reg_mux.ADR[] = 2; -- 2
+			WHEN 5 => reg_mux.ADR[] = 3; -- 3
+			--WHEN 5 => a_mux.sel[] = 2; -- 2
+			WHEN 5 => b_mux.ADR[] = 2; -- 2
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 3, 4 => s_reg[1] = VCC;
+			WHEN OTHERS  => s_reg[1] = GND;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 7, 8 => s_reg[2] = VCC;
+			WHEN OTHERS  => s_reg[2] = GND;
+	END CASE;
+
+-- for 2
+
+	CASE inv_clk_count[] IS
+			WHEN 9 => reg_mux.ADR[] = 4;
+			WHEN 9 => a_mux.ADR[] = 3;
+			WHEN 9 => b_mux.ADR[] = 3;
+	END CASE;
+
+	CASE inv_clk_count[] IS
+			WHEN 11, 12 => s_reg[3] = VCC;
+			WHEN OTHERS  => s_reg[3] = GND;
+	END CASE;
+
+-- for 3
+
+--	CASE inv_clk_count[] IS
+--			WHEN 13 => reg_mux.ADR[] = 5;
+--			WHEN 13 => a_mux.sel[] = 4;
+--			WHEN 13 => b_mux.sel[] = 4;
+--	END CASE;
+--
+--	CASE inv_clk_count[] IS
+--			WHEN 15, 16 => s_reg[4] = VCC;
+--			WHEN OTHERS  => s_reg[4] = GND;
+--	END CASE;
+--
+---- for 4
+--
+--	CASE inv_clk_count[] IS
+--			WHEN 17 => reg_mux.ADR[] = 0;
+--			WHEN 17 => a_mux.sel[] = 5;
+--			WHEN 17 => b_mux.sel[] = 5;
+--	END CASE;
+--
+--	CASE inv_clk_count[] IS
+--			WHEN 19, 20 => s_reg[5] = VCC;
+--			WHEN OTHERS  => s_reg[5] = GND;
+--	END CASE;
+
+
+--	IF i == 1
+--	THEN
+	
+--	reg_mux.sel[] = 2;
+
+--	CASE inv_clk_count[] IS
+--			WHEN 3, 4 => s_reg[1] = VCC;
+--			WHEN OTHERS  => s_reg[1] = GND;
+--	END CASE;
+
+	
+	
+	
+--	ELSIF i == 2
+--	THEN
+	
+
+--	ELSIF i == 3
+--	THEN
+
+
+--	ELSIF i == 4
+--	THEN
+
+
+--	END IF;
+
+--	END GENERATE;
+
+END;
